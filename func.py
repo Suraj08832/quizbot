@@ -44,11 +44,6 @@ PUBLIC_LINK_PATTERN = re.compile(r'(https?://)?(t\.me|telegram\.me)/([^/]+)(/(\d
 PRIVATE_LINK_PATTERN = re.compile(r'(https?://)?(t\.me|telegram\.me)/c/(\d+)(/(\d+))?')
 
 # Initialize MongoDB client
-
-
-PHP_API_URL = "https://devgagan.in/nunapi/api.php"
-PHP_API_KEY = "nDBn9l9NDO5NzOTeo4at8FC0J8sisJKZ"
-
 async def is_premium_user(user_id: int) -> bool:
     try:
         if FREE_BOT:
@@ -59,57 +54,6 @@ async def is_premium_user(user_id: int) -> bool:
         print(f"[is_premium_user] API error for {user_id}: {e}")
         return False
 
-
-async def api_request(endpoint, method='GET', data=None):
-    url = f"{PHP_API_URL}?endpoint={endpoint.lstrip('/')}"
-    headers = {'X-API-Key': PHP_API_KEY}
-    
-    try:
-        async with aiohttp.ClientSession() as session:
-            if method == 'GET':
-                async with session.get(url, headers=headers, params=data) as resp:
-                    result = await resp.json()
-                    # Debug logging for specific endpoints
-                    if '/all' in endpoint or endpoint == '/stats':
-                        print(f"DEBUG API [{method} {endpoint}]: Response success={result.get('success')}, keys={list(result.keys())}")
-                        if 'quizzes' in result:
-                            print(f"DEBUG API: Returned {len(result.get('quizzes', []))} quizzes")
-                        if 'users' in result:
-                            print(f"DEBUG API: Returned {len(result.get('users', []))} users")
-                    return result
-            elif method == 'POST':
-                async with session.post(url, headers=headers, json=data) as resp:
-                    result = await resp.json()
-                    return result
-            elif method == 'DELETE':
-                async with session.delete(url, headers=headers) as resp:
-                    result = await resp.json()
-                    return result
-    except Exception as e:
-        print(f"❌ API Error [{method} {endpoint}]: {e}")
-        return {'success': False, 'error': str(e)}
-
-def get_display_name(user):
-    """Get the display name for a user"""
-    if user.first_name and user.last_name:
-        return f"{user.first_name} {user.last_name}"
-    elif user.first_name:
-        return user.first_name
-    elif user.last_name:
-        return user.last_name
-    elif user.username:
-        return user.username
-    else:
-        return "Unknown User"
-
-async def get_user_data(user_id):
-    """Get user data from MongoDB"""
-    try:
-        user_data = await users_collection.find_one({"user_id": user_id})
-        return user_data
-    except Exception as e:
-        logger.error(f"Error retrieving user data for {user_id}: {e}")
-        return None
 
 async def add_premium_user(user_id, duration_value, duration_unit):
     """Add a user as premium member with expiration time"""
