@@ -1,7 +1,7 @@
 services:
   - type: web
     name: quizbot-main
-    env: python
+    runtime: python
     plan: free
     buildCommand: pip install --upgrade pip setuptools wheel && pip install -r requirements.txt
     startCommand: python main.py
@@ -13,7 +13,7 @@ services:
         value: "10"
   - type: worker
     name: quizbot-bot
-    env: python
+    runtime: python
     plan: free
     buildCommand: pip install --upgrade pip setuptools wheel && pip install -r requirements.txt
     startCommand: python bot.py
