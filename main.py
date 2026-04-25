@@ -97,28 +97,51 @@ def _start_auto_ping():
     threading.Thread(target=_ping_loop, daemon=True).start()
     print(f"[Keepalive] Auto-ping enabled every {KEEPALIVE_PING_INTERVAL}s -> {target_url}")
 
+# ── Safe DB init helpers ───────────────────────────────────────────────────────
+def _safe_sync_client(uri: str, name: str):
+    if not uri or not str(uri).strip():
+        print(f"[DB] {name} URI missing. Skipping connection.")
+        return None
+    try:
+        return pymongo.MongoClient(uri)
+    except Exception as exc:
+        print(f"[DB] {name} connection init failed: {exc}")
+        return None
+
+
+def _safe_async_client(uri: str, name: str):
+    if not uri or not str(uri).strip():
+        print(f"[DB] {name} URI missing. Skipping connection.")
+        return None
+    try:
+        return AsyncIOMotorClient(uri)
+    except Exception as exc:
+        print(f"[DB] {name} connection init failed: {exc}")
+        return None
+
+
 # ── Database connections ──────────────────────────────────────────────────────
-client_db = pymongo.MongoClient(MONGO_URI)
-db = client_db[DB_NAME]
-users_collection     = db["quiz_users"]
-questions_collection = db["questions"]
-auth_chats_collection = db["auth_chats"]
+client_db = _safe_sync_client(MONGO_URI, "MONGO_URI")
+db = client_db[DB_NAME] if client_db else None
+users_collection = db["quiz_users"] if db else None
+questions_collection = db["questions"] if db else None
+auth_chats_collection = db["auth_chats"] if db else None
 
-mongo_client = pymongo.MongoClient(MONGO_URI_2)
-mdb = mongo_client["assignment_bot"]
-assignments_collection = mdb["assignments"]
-submissions_collection = mdb["submissions"]
+mongo_client = _safe_sync_client(MONGO_URI_2, "MONGO_URI_2")
+mdb = mongo_client["assignment_bot"] if mongo_client else None
+assignments_collection = mdb["assignments"] if mdb else None
+submissions_collection = mdb["submissions"] if mdb else None
 
-cl2_db = pymongo.MongoClient(MONGO_URI_2)
-db2 = cl2_db[DB_NAME]
-uc_2 = db2["quiz_users"]
-qc_2 = db2["questions"]
-ac_2 = db2["auth_chats"]
+cl2_db = _safe_sync_client(MONGO_URI_2, "MONGO_URI_2(clone)")
+db2 = cl2_db[DB_NAME] if cl2_db else None
+uc_2 = db2["quiz_users"] if db2 else None
+qc_2 = db2["questions"] if db2 else None
+ac_2 = db2["auth_chats"] if db2 else None
 
-clientX = AsyncIOMotorClient(MONGO_URIX)
-dbx = clientX.quiz_bot_db
-quizzes_collection = dbx.quizzes
-filter_collection  = dbx.user_filters  # kept for compatibility
+clientX = _safe_async_client(MONGO_URIX, "MONGO_URIX")
+dbx = clientX.quiz_bot_db if clientX else None
+quizzes_collection = dbx.quizzes if dbx else None
+filter_collection = dbx.user_filters if dbx else None  # kept for compatibility
 
 BOT_API_URL = f"https://api.telegram.org/bot{BOT_TOKEN_2}"
 
