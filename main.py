@@ -81,9 +81,9 @@ def _start_keepalive_server():
 def _start_auto_ping():
     target_url = os.getenv("AUTO_PING_URL") or os.getenv("RENDER_EXTERNAL_URL")
     if not target_url:
-        print("[Keepalive] AUTO_PING_URL/RENDER_EXTERNAL_URL not set; auto-ping disabled")
-        return
-
+        port = int(os.getenv("PORT", "10000"))
+        target_url = f"http://127.0.0.1:{port}/"
+        print(f"[Keepalive] Using internal auto-ping URL: {target_url}")
     target_url = target_url.rstrip("/") + "/"
 
     def _ping_loop():

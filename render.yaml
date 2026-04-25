@@ -1,10 +1,22 @@
 services:
   - type: web
-    name: quizbot
+    name: quizbot-main
     env: python
     plan: free
-    buildCommand: pip install -r requirements.txt
+    buildCommand: pip install --upgrade pip setuptools wheel && pip install -r requirements.txt
     startCommand: python main.py
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: AUTO_PING_INTERVAL
+        value: "10"
+  - type: worker
+    name: quizbot-bot
+    env: python
+    plan: free
+    buildCommand: pip install --upgrade pip setuptools wheel && pip install -r requirements.txt
+    startCommand: python bot.py
     autoDeploy: true
     envVars:
       - key: PYTHON_VERSION
