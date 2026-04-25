@@ -12,6 +12,7 @@
 ╚══════════════════════════════════════════════════════════════════════════╝
 """
 import asyncio, aiohttp, html, io, json, logging, os, random, re, string, sys, traceback, fractions, uuid
+import threading
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 import aiofiles
@@ -22,6 +23,7 @@ from pymongo.errors import PyMongoError
 from sympy.parsing.latex import parse_latex
 from bs4 import BeautifulSoup
 from motor.motor_asyncio import AsyncIOMotorClient
+from flask import Flask
 
 from pyrogram import Client, filters
 from pyrogram.enums import PollType, ChatType
@@ -57,6 +59,43 @@ from config import (
 )
 
 app = Client("quizbot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN, workers=50)
+
+KEEPALIVE_PING_INTERVAL = int(os.getenv("AUTO_PING_INTERVAL", "10"))
+
+
+def _start_keepalive_server():
+    keepalive_app = Flask("quizbot_keepalive")
+
+    @keepalive_app.route("/", methods=["GET"])
+    def health():
+        return "Quizbot is running", 200
+
+    port = int(os.getenv("PORT", "10000"))
+    threading.Thread(
+        target=lambda: keepalive_app.run(host="0.0.0.0", port=port, use_reloader=False),
+        daemon=True
+    ).start()
+    print(f"[Keepalive] HTTP health server running on port {port}")
+
+
+def _start_auto_ping():
+    target_url = os.getenv("AUTO_PING_URL") or os.getenv("RENDER_EXTERNAL_URL")
+    if not target_url:
+        print("[Keepalive] AUTO_PING_URL/RENDER_EXTERNAL_URL not set; auto-ping disabled")
+        return
+
+    target_url = target_url.rstrip("/") + "/"
+
+    def _ping_loop():
+        while True:
+            try:
+                requests.get(target_url, timeout=8)
+            except Exception as exc:
+                print(f"[Keepalive] Auto-ping failed: {exc}")
+            time.sleep(KEEPALIVE_PING_INTERVAL)
+
+    threading.Thread(target=_ping_loop, daemon=True).start()
+    print(f"[Keepalive] Auto-ping enabled every {KEEPALIVE_PING_INTERVAL}s -> {target_url}")
 
 # ── Database connections ──────────────────────────────────────────────────────
 client_db = pymongo.MongoClient(MONGO_URI)
@@ -2982,4 +3021,6 @@ async def handle_creator_reply(client, message):
 
     await message.reply_text("Your reply has been sent to the student.")
 
+_start_keepalive_server()
+_start_auto_ping()
 app.run()

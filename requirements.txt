@@ -17,6 +17,7 @@ PyMySQL==1.1.0             # MySQL connector (web panel sync)
 aiohttp==3.9.3
 aiofiles==23.2.1
 requests==2.31.0
+Flask==3.0.3
 
 # ── HTML / text parsing ───────────────────────────────────────
 beautifulsoup4==4.12.3

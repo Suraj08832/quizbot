@@ -20,15 +20,18 @@ import random
 import re
 import json
 import os
+import threading
 from datetime import datetime, timedelta
 from typing import Dict, Any, Optional, List, Set
 from collections import deque, defaultdict
 from contextlib import asynccontextmanager
 import logging
 from logging.handlers import RotatingFileHandler
+import requests
 import pymongo
 from pymongo import MongoClient
 from pymongo.errors import PyMongoError, ConnectionFailure, OperationFailure
+from flask import Flask
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, Poll
 from telegram.constants import ParseMode, ChatType
@@ -118,6 +121,45 @@ def setup_logging():
     return logging.getLogger(__name__)
 
 logger = setup_logging()
+
+KEEPALIVE_PING_INTERVAL = int(os.getenv("AUTO_PING_INTERVAL", "10"))
+
+
+def _start_keepalive_server():
+    """Expose a simple health endpoint for Render."""
+    keepalive_app = Flask("quizbot_keepalive")
+
+    @keepalive_app.route("/", methods=["GET"])
+    def health():
+        return "Quizbot is running", 200
+
+    port = int(os.getenv("PORT", "10000"))
+    threading.Thread(
+        target=lambda: keepalive_app.run(host="0.0.0.0", port=port, use_reloader=False),
+        daemon=True
+    ).start()
+    logger.info(f"✓ Keepalive server started on port {port}")
+
+
+def _start_auto_ping():
+    """Self-ping the public Render URL so the web service stays active."""
+    target_url = os.getenv("AUTO_PING_URL") or os.getenv("RENDER_EXTERNAL_URL")
+    if not target_url:
+        logger.info("AUTO_PING_URL/RENDER_EXTERNAL_URL not set; auto-ping disabled")
+        return
+
+    target_url = target_url.rstrip("/") + "/"
+
+    def _ping_loop():
+        while True:
+            try:
+                requests.get(target_url, timeout=8)
+            except Exception as exc:
+                logger.warning(f"Auto-ping failed: {exc}")
+            time.sleep(KEEPALIVE_PING_INTERVAL)
+
+    threading.Thread(target=_ping_loop, daemon=True).start()
+    logger.info(f"✓ Auto-ping enabled every {KEEPALIVE_PING_INTERVAL}s to {target_url}")
 
 # ═══════════════════════════════════════════════════════════════════════════
 # DATABASE CONNECTION POOL MANAGER
@@ -2947,6 +2989,8 @@ def main():
     logger.info("="*80)
     logger.info("PRODUCTION QUIZ BOT - STARTING (SIMPLIFIED VERSION)")
     logger.info("="*80)
+    _start_keepalive_server()
+    _start_auto_ping()
     
 
     application = (

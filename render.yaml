@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: quizbot
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main.py
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: AUTO_PING_INTERVAL
+        value: "10"
